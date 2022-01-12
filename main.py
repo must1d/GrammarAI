@@ -7,6 +7,6 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--sentence", type=str, default="blocks")
+    parser.add_argument("--sentence", type=str, default="No sentence!")
     args = parser.parse_args()
     main(args)
