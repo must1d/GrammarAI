@@ -3,6 +3,7 @@ import argparse
 
 def main(args):
     print(args.sentence)
+    print("Printed from Python")
 
 
 if __name__ == "__main__":
