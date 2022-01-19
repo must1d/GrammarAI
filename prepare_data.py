@@ -9,6 +9,7 @@ def main(args):
     sequences: List[str] = [""]
     label_vecs = []
 
+    # TODO Change sample to some argument
     with open(args.input_path / "sample.txt", "r", encoding="utf-8") as infile:
         infile.readline()  # Skip header
         text = infile.read()

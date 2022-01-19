@@ -1,6 +1,13 @@
+from pathlib import Path
 from typing import List
 from unidecode import unidecode
 import string
+import pandas
+
+
+def read_training_data(path: Path):
+    data = pandas.read_csv(path / "dataset.csv")
+    return data["sequence"], data["labels"]
 
 
 def one_hot(sequence: str) -> List[List[int]]:
