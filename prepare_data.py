@@ -58,5 +58,6 @@ if __name__ == "__main__":
     parser.add_argument("sequence_length", type=int, default=100, nargs="?")
     args = parser.parse_args()
     if args.sequence_length <= 0:
-        raise argparse.ArgumentTypeError("Sequence length has to be greater than 0!")
+        raise argparse.ArgumentTypeError(
+            "Sequence length has to be greater than 0!")
     main(args)
