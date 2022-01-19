@@ -3,7 +3,7 @@ import argparse
 
 def main(args):
     print(args.sentence)
-    print("Test für GitHub!")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
