@@ -11,7 +11,6 @@ class LSTM(nn.Module):
 
         # LSTM Module
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers)
-
         # NN outputs probability of letter being uppercase or lowercase
         self.output_layer = nn.Linear(hidden_size, 1)
 
@@ -31,16 +30,6 @@ class LSTM(nn.Module):
         return output
 
     def init_lstm_state(self, num_inputs):
+        # num_inputs: Inputs to LSTM / batch size
         zeros = torch.zeros(self.num_layers, num_inputs, self.hidden_size)
         return (zeros, zeros)
-
-
-batch_size = 30
-vec_size = 15
-hidden_size = 5
-num_layers = 1
-
-input = torch.zeros(1, batch_size, vec_size)
-
-nn = LSTM(vec_size, hidden_size, num_layers)
-nn(input, nn.init_lstm_state(batch_size))

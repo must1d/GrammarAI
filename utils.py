@@ -11,9 +11,7 @@ def read_training_data(path: Path):
 
 
 def one_hot(sequence: str) -> List[List[int]]:
-    # TODO Fix this structure
     alphabet = string.printable
-
     sequence_one_hot = []
     decoded = unidecode(sequence)
     for char in decoded:
