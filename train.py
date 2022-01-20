@@ -33,15 +33,27 @@ def main(args):
     training_targets = training_targets.to_list()
     # split into training and validation sets
     val_size = int(args.val_split*len(training_in))
-    validation_in = [] 
-    validation_targets = [] 
+    validation_in = []
+    validation_targets = []
     for i in range(val_size):
         index = random.randint(0, len(training_in) - 1)
         validation_in.append(training_in.pop(index))
         validation_targets.append(training_targets.pop(index))
-        
+
+    batches = []
     # prepare batches and encode inputs
-    
+    sequence_size = len(training_in[0])
+    # [seq_size, batch_size, one_hot_size]
+    for i in range(0, len(training_in), args.batch_size):
+        batch_tensor = torch.zeros(
+            sequence_size, args.batch_size, len(string.printable))
+
+        batch_in = training_in[i:i+args.batch_size]
+        targets = training_targets[i:i+args.batch_size]
+
+        batches.append(batch_tensor)
+        
+
     # Training
     for i in range(args.epochs):
         # for all batches:
@@ -53,6 +65,7 @@ def main(args):
             loss = 0
             
             # for all characters in sequence / sentence:
+                # [1, batch_size, one_hot_size]
                 predicted, lstm_state = LSTM.forward(batch_inputs, lstm_state)
                 loss += loss_fun(predicted, batch_targets)
                 
