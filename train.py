@@ -46,7 +46,6 @@ def main(args):
     sequence_size = len(training_in[0])
     # [seq_size, batch_size, one_hot_size]
     for i in range(0, len(training_in), args.batch_size):
-
         batch_tensor = []
         sequences_in_batch_size = training_in[i:i+args.batch_size]
         # Look app sequences in batch
@@ -59,44 +58,36 @@ def main(args):
         batches.append(batch_tensor)
 
         targets = training_targets[i:i+args.batch_size]
-        
+    
     # Training
     for i in range(args.epochs):
         for batch in batches:
-
-            batch.to(device)
-
             hidden_state, cell_state = lstm.init_lstm_state(args.batch_size)
-            hidden_state.to(device)
-            cell_state.to(device)
-            
+            hidden_state = hidden_state.to(device)
+            cell_state = cell_state.to(device)
             optimizer.zero_grad()
             
             loss = 0
 
-            # print(batch[0][0])
             for i in range(sequence_size):
-                sequence_3d = batch[:, i, :]
-                sequence_3d = sequence_3d[None, :, :]
-                print(sequence_3d.size())
+                lstm_input = batch[:, i, :]
+                lstm_input = lstm_input[None, :, :]
+                lstm_input = lstm_input.to(device)
+                # print(lstm_input[0][:])
 
-            #for sequence in batch:
-                #sequence_3d = sequence[:, None, :]
-                #print(sequence_3d.size())
-                #print(sequence_3d)
-                #print(sequence_3d.size())
-                # predicted, lstm_state = lstm.forward()
+                predicted, (hidden_state, cell_state) = lstm.forward(
+                    lstm_input, (hidden_state, cell_state))
 
             # for all characters in sequence / sentence:
                 # [1, batch_size, one_hot_size]
             #    predicted, lstm_state = LSTM.forward(batch_inputs, lstm_state)
             #    loss += loss_fun(predicted, batch_targets)
                 
-            loss.backward()
-            optimizer.step()
+            #loss.backward()
+            #optimizer.step()
         # after all batches are done
         # validation
-        val_loss = 0
+       # val_loss = 0
         # for all validation sequences:
             #lstm_state = LSTM.init_lstm_state(args.batch_size)
             #lstm_state = lstm_state.to(device)
@@ -116,7 +107,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset", type=Path, required=True)
     parser.add_argument("--hidden_size", type=int, default=700)
     parser.add_argument("--num_layers", type=int, default=3)
-    parser.add_argument("--epochs", type=int, default=10)
+    parser.add_argument("--epochs", type=int, default=1)
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--lr", type=float, default=0.01)
     parser.add_argument("--val_split", type=float, default=0.1)
