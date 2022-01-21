@@ -56,7 +56,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("output_path", type=Path)
     parser.add_argument("input_path", type=Path)
-    parser.add_argument("sequence_length", type=int, default=100, nargs="?")
+    parser.add_argument("--sequence_length", type=int, default=100)
     args = parser.parse_args()
     if args.sequence_length <= 0:
         raise argparse.ArgumentTypeError(
