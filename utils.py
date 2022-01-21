@@ -3,22 +3,15 @@ from typing import List
 from unidecode import unidecode
 import string
 import pandas
-import numpy as np
 
 
 def read_training_data(path: Path):
     data = pandas.read_csv(path / "dataset.csv")
 
-    sequences = data["sequence"].to_list()
-    labels_str = data["labels"]
-    labels = []
+    inputs = data["input"].to_list()
+    targets = data["target"].to_list()
 
-    # convert array string to array
-    for label in labels_str:
-        label = np.fromstring(label[1:-1], sep=',')
-        labels.append(list(label))
-
-    return sequences, labels
+    return inputs, targets
 
 
 def one_hot(sequence: str) -> List[List[int]]:

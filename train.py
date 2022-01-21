@@ -29,15 +29,19 @@ def main(args):
 
     # TODO: Improve this
     # Load input and targets
-    training_in, training_targets = read_training_data(args.dataset)
-    
+    training_inputs, training_targets = read_training_data(args.dataset)
+    for stringg in training_inputs:
+        print(len(stringg))
+
+
     # split into training and validation sets
-    val_size = int(args.val_split*len(training_in))
-    validation_in = []
+    val_size = int(args.val_split*len(training_inputs))
+    validation_inputs = []
     validation_targets = []
+    # TODO Replace this with random.shuffle() and pick elements
     for i in range(val_size):
-        index = random.randint(0, len(training_in) - 1)
-        validation_in.append(training_in.pop(index))
+        index = random.randint(0, len(training_inputs) - 1)
+        validation_inputs.append(training_inputs.pop(index))
         validation_targets.append(training_targets.pop(index))
 
     # list of all batches as tensors
@@ -45,11 +49,11 @@ def main(args):
     batches_targets: List[torch.Tensor] = []
     
     # prepare batches and encode inputs
-    sequence_size = len(training_in[0])
+    sequence_size = len(training_inputs[0])
     # [seq_size, batch_size, one_hot_size]
-    for i in range(0, len(training_in), args.batch_size):
+    for i in range(0, len(training_inputs), args.batch_size):
         batch_tensor = []
-        sequences_in_batch_size = training_in[i:i+args.batch_size]
+        sequences_in_batch_size = training_inputs[i:i+args.batch_size]
         # Look app sequences in batch
         for sequence in sequences_in_batch_size:
             one_hotted_sequence = one_hot(sequence)
@@ -58,7 +62,11 @@ def main(args):
         batch_tensor = torch.as_tensor(batch_tensor, dtype=torch.float32)
         batches.append(batch_tensor)
 
+        target_tensor = []
         targets = training_targets[i:i+args.batch_size]
+        # One-Hot targets
+        for target in targets:
+            target_tensor.append(one_hot(target))
         targets = torch.as_tensor(targets, dtype=torch.float32)
         batches_targets.append(targets)
 
@@ -95,8 +103,9 @@ def main(args):
                 predicted = predicted[0, :, 0].to(device)
 
                 # get i-th target of each sequence in batch
-                target_1D = target[:, i].to(device)
-                loss += loss_fun(predicted, target_1D)
+                target_2D = target[:, i].to(device)
+                print(target_2D)
+                loss += loss_fun(predicted, target_2D)
 
             epoch_train_loss.append(loss.item())
             loss.backward()
