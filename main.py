@@ -26,7 +26,6 @@ def main(args):
     sentence = args.sentence
     sentence_tensor = one_hot(sentence)
     sentence_tensor = torch.as_tensor(sentence_tensor, dtype=torch.float32)
-    print(sentence_tensor.size())
 
     output_sentence = ""
 
