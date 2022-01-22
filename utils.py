@@ -18,9 +18,9 @@ def one_hot(sequence: str) -> List[List[int]]:
     # TODO New way to encode sequences
     # Can't assure that a character will decode into exactly one character
     decoded = unidecode(sequence)
-    if len(decoded) >= 51:
-        print(sequence)
-        print(decoded)
+    #if len(decoded) >= 51:
+    #    print(sequence)
+    #    print(decoded)
     for char in decoded:
         arr = [0] * len(alphabet)
         arr[alphabet.index(char)] = 1

@@ -7,6 +7,7 @@ import string
 import random
 import matplotlib.pyplot as plt
 import numpy as np
+import progressbar
 
 from utils import read_training_data, one_hot
 from networks import LSTM
@@ -46,7 +47,7 @@ def main(args):
     batches: List[torch.Tensor] = []
     batches_targets: List[torch.Tensor] = []
 
-    # prepare batches and encode inputs
+    # prepare batches and encode inputs and targets
     sequence_size = len(training_inputs[0])
     # [seq_size, batch_size, one_hot_size]
     for i in range(0, len(training_inputs), args.batch_size):
@@ -67,20 +68,33 @@ def main(args):
         target_tensor = torch.as_tensor(target_tensor, dtype=torch.float32)
         batches_targets.append(target_tensor)
 
-    # metrics for plots
+    # metrics for plots to track performance in training
     epoch_train_losses = []
     epoch_val_losses = []
 
+    # Progressbar to track progress within epoch
+    bar = progressbar.ProgressBar(
+        maxval=len(batches),
+        widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()]
+    )
+
     # Training
     for i in range(args.epochs):
+        # for every epoch new bar
+        # Progress Bar for an epch (updated after each batch)
+        print("Epoch " + str(i + 1) + " starting:")
+
+        bar.start()
+
         epoch_train_loss = []
         epoch_val_loss = []
-        
-        # learn from all batches
-        for batch, target in zip(batches, batches_targets):
+
+        # go through all batches
+        for j, (batch, target) in enumerate(zip(batches, batches_targets)):
             hidden_state, cell_state = lstm.init_lstm_state(len(batch))
             hidden_state = hidden_state.to(device)
             cell_state = cell_state.to(device)
+
             optimizer.zero_grad()
             loss = 0
 
@@ -89,35 +103,28 @@ def main(args):
                 lstm_input = batch[:, i, :]
                 lstm_input = lstm_input[None, :, :]
                 lstm_input = lstm_input.to(device)
-                # print(lstm_input[0][:])
 
                 lstm_state = (hidden_state, cell_state)
                 predicted, lstm_state = lstm.forward(
                     lstm_input, lstm_state)
 
-                # calculate loss
-                # predicted = predicted[0, :, 0].to(device)
-
-                # get i-th target of each sequence in batch
-                # print(target)
                 target_2D = target[:, i].to(device)
                 loss += loss_fun(predicted, target_2D)
 
             epoch_train_loss.append(loss.item())
+
             loss.backward()
             optimizer.step()
 
+            bar.update(j)
+    
+        bar.finish()
+
+        # TODO: validation after epoch
+
+        print("Epoch finished!")
         epoch_train_losses.append(sum(epoch_train_loss)/len(epoch_train_loss))
 
-        # validation
-        # val_loss = 0
-        # for all validation sequences:
-            #lstm_state = LSTM.init_lstm_state(args.batch_size)
-            #lstm_state = lstm_state.to(device)
-            # for all characters in sequence / sentence:
-            #    predicted, lstm_state = LSTM.forward(batch_inputs, lstm_state)
-            #    loss += loss_fun(predicted, batch_targets)
-            #val_loss += loss_fun
     print(epoch_train_losses)
     plot_training(epoch_train_losses, epoch_val_losses)
 
@@ -146,7 +153,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_layers", type=int, default=3)
     parser.add_argument("--epochs", type=int, default=15)
     parser.add_argument("--batch_size", type=int, default=32)
-    parser.add_argument("--lr", type=float, default=0.0005)
+    parser.add_argument("--lr", type=float, default=0.01)
     parser.add_argument("--val_split", type=float, default=0.1)
     args = parser.parse_args()
     main(args)
