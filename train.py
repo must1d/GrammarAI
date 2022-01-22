@@ -88,7 +88,7 @@ def main(args):
     for i in range(args.epochs):
         num_epoch = i + 1
         # print("Epoch " + str(i + 1) + " starting:")
-        
+
         # metric variables
         epoch_train_loss = []
         hits = 0
