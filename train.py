@@ -1,18 +1,22 @@
 import argparse
 from pathlib import Path
+from datetime import datetime
+import time
 from typing import List
 import torch
 import torch.nn.functional as F
 import random
 import matplotlib.pyplot as plt
 import numpy as np
-import progressbar
+import os
 
-from utils import read_training_data, one_hot, alphabet
+from utils import read_training_data, one_hot, alphabet, print_progress_bar
 from networks import LSTM
 
 
 def main(args):
+    start_time = datetime.now().strftime("%y-%m-%d-%H.%M.%S")
+
     # first check if cuda is available, otherwise use CPU
     use_cuda = torch.cuda.is_available()
     if use_cuda:
@@ -82,25 +86,17 @@ def main(args):
     epoch_train_losses = []
     epoch_val_losses = []
 
-    print(len(batches))
-
     # Training
     for i in range(args.epochs):
-        print(torch.cuda.memory_summary(device=device))
-        # for every epoch new bar
-        # Progress Bar for an epch (updated after each batch)
-        print("Epoch " + str(i + 1) + " starting:")
-
-        bar = progressbar.ProgressBar(
-            maxval=len(batches),
-            widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()]
-        )
-        bar.start()
+        num_epoch = i + 1
+        # print("Epoch " + str(i + 1) + " starting:")
 
         epoch_train_loss = []
 
         # go through all batches
         for j, (batch, target) in enumerate(zip(batches, batches_targets)):
+            time_batch_start = time.time()
+
             optimizer.zero_grad()
 
             hidden_state, cell_state = lstm.init_lstm_state(len(batch))
@@ -132,12 +128,19 @@ def main(args):
             loss.backward()
             optimizer.step()
 
-            bar.update(j)
+            time_batch = time.time() - time_batch_start
+            time_remaining = round((len(batches) - j - 1) * time_batch, 1)
+            time_pred_string = f"Time remaining: {time_remaining}"
+            print_progress_bar(
+                j,
+                len(batches) - 1,
+                f"Epoch {num_epoch}",
+                suffix=", " + time_pred_string + "s",
+                fill_char="#"
+            )
 
-        bar.finish()
-
-        # TODO: validation after epoch
-        optimizer.zero_grad()
+        # Validation
+        # optimizer.zero_grad()
 
         hidden_state, cell_state = lstm.init_lstm_state(len(validation_inputs))
         hidden_state = hidden_state.to(device)
@@ -156,16 +159,19 @@ def main(args):
 
             target_2D = validation_targets_tensor[:, i].to(device)
             val_loss += loss_fun(predicted, target_2D)
-        epoch_val_losses.append(val_loss)
+        epoch_val_losses.append(val_loss.item())
 
-        print("Epoch finished!")
         epoch_train_losses.append(sum(epoch_train_loss)/len(epoch_train_loss))
 
-    print(epoch_train_losses)
-    plot_training(epoch_train_losses, epoch_val_losses)
+    # Save network
+    path = f"models/lstm_e={args.epochs}_bs={args.batch_size}_t={start_time}"
+    os.mkdir(path)
+    torch.save(lstm.state_dict(), f"{path}/model")
+    # Plot
+    plot_training(epoch_train_losses, epoch_val_losses, path)
 
 
-def plot_training(epoch_train_losses, epoch_val_losses):
+def plot_training(epoch_train_losses, epoch_val_losses, path):
     plt.title("Losses")
     plt.grid(True)
     plt.xlabel("Epoch")
@@ -175,23 +181,22 @@ def plot_training(epoch_train_losses, epoch_val_losses):
     x_evl = np.arange(1, len(epoch_val_losses) + 1)
     plt.plot(x_evl, epoch_val_losses, "-b", label="Validation Loss")
     plt.legend(loc="upper right")
-    plt.show()
-    plt.savefig("matplotlib.png")
+    # plt.show()
+    plt.savefig(f"{path}/losses.png")
 
 
 def loss_fun(pred, target):
-    # binary cross entropy for binary classification [upper-/ lowercase]
     return F.cross_entropy(pred, target)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("dataset", type=Path)
-    parser.add_argument("--hidden_size", type=int, default=700)
-    parser.add_argument("--num_layers", type=int, default=3)
+    parser.add_argument("--hidden_size", type=int, default=300)
+    parser.add_argument("--num_layers", type=int, default=2)
     parser.add_argument("--epochs", type=int, default=15)
     parser.add_argument("--batch_size", type=int, default=32)
-    parser.add_argument("--lr", type=float, default=0.0001)
+    parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--val_split", type=float, default=0.1)
     args = parser.parse_args()
     main(args)

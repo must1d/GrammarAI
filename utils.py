@@ -25,3 +25,13 @@ def one_hot(sequence: str) -> List[List[int]]:
             arr[alphabet.index(char)] = 1
         sequence_one_hot.append(arr)
     return sequence_one_hot
+
+
+def print_progress_bar(current, maximum, description: str = '', suffix: str = '', num_bar_chars=30, fill_char='█'):
+    progress = current / maximum
+    num_blocks = int(progress * num_bar_chars)
+    bar = '|{}|'.format(num_blocks * fill_char + (num_bar_chars - num_blocks) * ' ')
+    percentage = int(progress * 100)
+    print('\r{} {} - {}% {}'.format(description, bar, percentage, suffix), end='')
+    if progress >= 1:
+        print()
