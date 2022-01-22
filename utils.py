@@ -3,7 +3,7 @@ from typing import List
 import string
 import pandas
 
-alphabet = string.printable + "ÄÖÜäöüß"
+alphabet = string.printable + "ÄÖÜäöü"
 
 
 def read_training_data(path: Path):
@@ -16,7 +16,8 @@ def read_training_data(path: Path):
 def one_hot(sequence: str) -> List[List[int]]:
     # character index 98 will be used for characters that are not part of alphabet
     sequence_one_hot = []
-
+    if type(sequence) is float:
+        print(sequence)
     for char in sequence:
         arr = [0] * len(alphabet)
         if char not in alphabet:
