@@ -34,12 +34,12 @@ def main(args):
     # crate csv output file if it does not exist
     csv_path = args.output_path / "dataset.csv"
     if not csv_path.exists():
-        with open(csv_path, "w", newline='') as csvfile:
+        with open(csv_path, "w", newline='', encoding='utf-8') as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow(["input", "target"])
 
     # append data to end of csv file
-    with open(csv_path, "a", newline='') as csvfile:
+    with open(csv_path, "a", newline='', encoding='utf-8') as csvfile:
         writer = csv.writer(csvfile)
         for sequence in sequences:
             writer.writerow([sequence.lower(), sequence])

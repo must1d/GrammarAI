@@ -2,10 +2,11 @@ import argparse
 from pathlib import Path
 from typing import List
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import string
 import random
+import matplotlib.pyplot as plt
+import numpy as np
 
 from utils import read_training_data, one_hot
 from networks import LSTM
@@ -30,9 +31,6 @@ def main(args):
     # TODO: Improve this
     # Load input and targets
     training_inputs, training_targets = read_training_data(args.dataset)
-    for stringg in training_inputs:
-        print(len(stringg))
-
 
     # split into training and validation sets
     val_size = int(args.val_split*len(training_inputs))
@@ -47,7 +45,7 @@ def main(args):
     # list of all batches as tensors
     batches: List[torch.Tensor] = []
     batches_targets: List[torch.Tensor] = []
-    
+
     # prepare batches and encode inputs
     sequence_size = len(training_inputs[0])
     # [seq_size, batch_size, one_hot_size]
@@ -58,7 +56,6 @@ def main(args):
         for sequence in sequences_in_batch_size:
             one_hotted_sequence = one_hot(sequence)
             batch_tensor.append(one_hotted_sequence)
-
         batch_tensor = torch.as_tensor(batch_tensor, dtype=torch.float32)
         batches.append(batch_tensor)
 
@@ -67,8 +64,8 @@ def main(args):
         # One-Hot targets
         for target in targets:
             target_tensor.append(one_hot(target))
-        targets = torch.as_tensor(targets, dtype=torch.float32)
-        batches_targets.append(targets)
+        target_tensor = torch.as_tensor(target_tensor, dtype=torch.float32)
+        batches_targets.append(target_tensor)
 
     # metrics for plots
     epoch_train_losses = []
@@ -85,7 +82,6 @@ def main(args):
             hidden_state = hidden_state.to(device)
             cell_state = cell_state.to(device)
             optimizer.zero_grad()
-
             loss = 0
 
             # for every character in sequence (each sequence in parallel)
@@ -100,11 +96,11 @@ def main(args):
                     lstm_input, lstm_state)
 
                 # calculate loss
-                predicted = predicted[0, :, 0].to(device)
+                # predicted = predicted[0, :, 0].to(device)
 
                 # get i-th target of each sequence in batch
+                # print(target)
                 target_2D = target[:, i].to(device)
-                print(target_2D)
                 loss += loss_fun(predicted, target_2D)
 
             epoch_train_loss.append(loss.item())
@@ -112,7 +108,7 @@ def main(args):
             optimizer.step()
 
         epoch_train_losses.append(sum(epoch_train_loss)/len(epoch_train_loss))
-        
+
         # validation
         # val_loss = 0
         # for all validation sequences:
@@ -123,10 +119,24 @@ def main(args):
             #    loss += loss_fun(predicted, batch_targets)
             #val_loss += loss_fun
     print(epoch_train_losses)
+    plot_training(epoch_train_losses, epoch_val_losses)
+
+
+def plot_training(epoch_train_losses, epoch_val_losses):
+    plt.title("Losses")
+    plt.grid(True)
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    x_etl = np.arange(1, len(epoch_train_losses) + 1)
+    plt.plot(x_etl, epoch_train_losses, "-r", label="Training Loss")
+    x_evl = np.arange(1, len(epoch_val_losses) + 1)
+    plt.plot(x_evl, epoch_val_losses, "-b", label="Validation Loss")
+    plt.legend(loc="upper right")
+    plt.show()
 
 def loss_fun(pred, target):
     # binary cross entropy for binary classification [upper-/ lowercase]
-    return F.binary_cross_entropy(pred, target)
+    return F.cross_entropy(pred, target)
 
 
 if __name__ == "__main__":
@@ -134,7 +144,7 @@ if __name__ == "__main__":
     parser.add_argument("dataset", type=Path)
     parser.add_argument("--hidden_size", type=int, default=700)
     parser.add_argument("--num_layers", type=int, default=3)
-    parser.add_argument("--epochs", type=int, default=100)
+    parser.add_argument("--epochs", type=int, default=15)
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--lr", type=float, default=0.0005)
     parser.add_argument("--val_split", type=float, default=0.1)
