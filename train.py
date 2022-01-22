@@ -47,34 +47,29 @@ def main(args):
         validation_targets.append(training_targets.pop(index))
 
     # list of all batches as tensors
-    batches: List[torch.Tensor] = []
-    batches_targets: List[torch.Tensor] = []
+    batches_input_tensors: List[torch.Tensor] = []
+    batches_target_tensors: List[torch.Tensor] = []
 
     # prepare batches and encode inputs and targets
     sequence_size = len(training_inputs[0])
-    # [seq_size, batch_size, one_hot_size]
     for i in range(0, len(training_inputs), args.batch_size):
-        batch_tensor = []
-        sequences_in_batch_size = training_inputs[i:i+args.batch_size]
-        # Look app sequences in batch
-        for sequence in sequences_in_batch_size:
-            one_hotted_sequence = one_hot(sequence)
-            batch_tensor.append(one_hotted_sequence)
-        batch_tensor = torch.as_tensor(batch_tensor, dtype=torch.float32)
-        batches.append(batch_tensor)
+        batch_inputs = training_inputs[i:i+args.batch_size]
+        batch_targets = training_targets[i:i+args.batch_size]
 
-        target_tensor = []
-        targets = training_targets[i:i+args.batch_size]
-        # One-Hot targets
-        for target in targets:
-            target_tensor.append(one_hot(target))
-        target_tensor = torch.as_tensor(target_tensor, dtype=torch.float32)
-        batches_targets.append(target_tensor)
+        training_input_tensor = []      # [seq_size, batch_size, one_hot_size]
+        training_targets_tensor = []    # [seq_size, batch_size, one_hot_size]
+        for (sequence_in, sequence_out) in zip(batch_inputs, batch_targets):
+            training_input_tensor.append(one_hot(sequence_in))
+            training_targets_tensor.append(one_hot(sequence_out))
+        training_input_tensor = torch.as_tensor(training_input_tensor, dtype=torch.float32)
+        training_targets_tensor = torch.as_tensor(training_targets_tensor, dtype=torch.float32)
+
+        batches_input_tensors.append(training_input_tensor)
+        batches_target_tensors.append(training_targets_tensor)
 
     # prepare validation inputs and targets as tensors
-    # [seq_size, len(validation_inputs), one_hot_size]
-    validation_input_tensor = []
-    validation_targets_tensor = []
+    validation_input_tensor = []    # [seq_size, len(validation_inputs), one_hot_size]
+    validation_targets_tensor = []  # [seq_size, len(validation_inputs), one_hot_size]
     for (sequence_in, sequence_out) in zip(validation_inputs, validation_targets):
         validation_input_tensor.append(one_hot(sequence_in))
         validation_targets_tensor.append(one_hot(sequence_out))
@@ -94,7 +89,7 @@ def main(args):
         epoch_train_loss = []
 
         # go through all batches
-        for j, (batch, target) in enumerate(zip(batches, batches_targets)):
+        for j, (batch, target) in enumerate(zip(batches_input_tensors, batches_target_tensors)):
             time_batch_start = time.time()
 
             optimizer.zero_grad()
@@ -129,19 +124,17 @@ def main(args):
             optimizer.step()
 
             time_batch = time.time() - time_batch_start
-            time_remaining = round((len(batches) - j - 1) * time_batch, 1)
+            time_remaining = round((len(batches_input_tensors) - j - 1) * time_batch, 1)
             time_pred_string = f"Time remaining: {time_remaining}"
             print_progress_bar(
                 j,
-                len(batches) - 1,
+                len(batches_input_tensors) - 1,
                 f"Epoch {num_epoch}",
                 suffix=", " + time_pred_string + "s",
                 fill_char="#"
             )
 
         # Validation
-        # optimizer.zero_grad()
-
         hidden_state, cell_state = lstm.init_lstm_state(len(validation_inputs))
         hidden_state = hidden_state.to(device)
         cell_state = cell_state.to(device)
@@ -181,8 +174,8 @@ def plot_training(epoch_train_losses, epoch_val_losses, path):
     x_evl = np.arange(1, len(epoch_val_losses) + 1)
     plt.plot(x_evl, epoch_val_losses, "-b", label="Validation Loss")
     plt.legend(loc="upper right")
-    # plt.show()
     plt.savefig(f"{path}/losses.png")
+    # plt.show()
 
 
 def loss_fun(pred, target):
