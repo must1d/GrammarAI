@@ -1,8 +1,9 @@
 from pathlib import Path
 from typing import List
-from unidecode import unidecode
 import string
 import pandas
+
+alphabet = string.printable + "ÄÖÜäöüß"
 
 
 def read_training_data(path: Path):
@@ -13,16 +14,14 @@ def read_training_data(path: Path):
 
 
 def one_hot(sequence: str) -> List[List[int]]:
-    alphabet = string.printable
+    # character index 98 will be used for characters that are not part of alphabet
     sequence_one_hot = []
-    # TODO New way to encode sequences
-    # Can't assure that a character will decode into exactly one character
-    decoded = unidecode(sequence)
-    #if len(decoded) >= 51:
-    #    print(sequence)
-    #    print(decoded)
-    for char in decoded:
+
+    for char in sequence:
         arr = [0] * len(alphabet)
-        arr[alphabet.index(char)] = 1
+        if char not in alphabet:
+            arr[98] = 1
+        else:
+            arr[alphabet.index(char)] = 1
         sequence_one_hot.append(arr)
     return sequence_one_hot

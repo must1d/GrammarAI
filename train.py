@@ -3,13 +3,12 @@ from pathlib import Path
 from typing import List
 import torch
 import torch.nn.functional as F
-import string
 import random
 import matplotlib.pyplot as plt
 import numpy as np
 import progressbar
 
-from utils import read_training_data, one_hot
+from utils import read_training_data, one_hot, alphabet
 from networks import LSTM
 
 
@@ -23,7 +22,7 @@ def main(args):
     device = torch.device("cuda" if use_cuda else "cpu")
 
     # create new model and push it to device
-    lstm = LSTM(len(string.printable), args.hidden_size, args.num_layers)
+    lstm = LSTM(len(alphabet), args.hidden_size, args.num_layers)
     lstm = lstm.to(device)
 
     # Adam optimizer with specified learning rate
@@ -68,34 +67,46 @@ def main(args):
         target_tensor = torch.as_tensor(target_tensor, dtype=torch.float32)
         batches_targets.append(target_tensor)
 
+    # prepare validation inputs and targets as tensors
+    # [seq_size, len(validation_inputs), one_hot_size]
+    validation_input_tensor = []
+    validation_targets_tensor = []
+    for (sequence_in, sequence_out) in zip(validation_inputs, validation_targets):
+        validation_input_tensor.append(one_hot(sequence_in))
+        validation_targets_tensor.append(one_hot(sequence_out))
+    validation_input_tensor = torch.as_tensor(validation_input_tensor, dtype=torch.float32)
+    validation_targets_tensor = torch.as_tensor(validation_targets_tensor, dtype=torch.float32)
+
+    # TODO: add accuracy as metric
     # metrics for plots to track performance in training
     epoch_train_losses = []
     epoch_val_losses = []
 
-    # Progressbar to track progress within epoch
-    bar = progressbar.ProgressBar(
-        maxval=len(batches),
-        widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()]
-    )
+    print(len(batches))
 
     # Training
     for i in range(args.epochs):
+        print(torch.cuda.memory_summary(device=device))
         # for every epoch new bar
         # Progress Bar for an epch (updated after each batch)
         print("Epoch " + str(i + 1) + " starting:")
 
+        bar = progressbar.ProgressBar(
+            maxval=len(batches),
+            widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()]
+        )
         bar.start()
 
         epoch_train_loss = []
-        epoch_val_loss = []
 
         # go through all batches
         for j, (batch, target) in enumerate(zip(batches, batches_targets)):
+            optimizer.zero_grad()
+
             hidden_state, cell_state = lstm.init_lstm_state(len(batch))
             hidden_state = hidden_state.to(device)
             cell_state = cell_state.to(device)
 
-            optimizer.zero_grad()
             loss = 0
 
             # for every character in sequence (each sequence in parallel)
@@ -106,9 +117,14 @@ def main(args):
 
                 lstm_state = (hidden_state, cell_state)
                 predicted, lstm_state = lstm.forward(
-                    lstm_input, lstm_state)
+                    lstm_input, lstm_state
+                )
 
                 target_2D = target[:, i].to(device)
+                # TODO: Check if better
+                # loss2 = loss_fun(predicted, target_2D)
+                # loss2.backward()
+                # optimizer.step()
                 loss += loss_fun(predicted, target_2D)
 
             epoch_train_loss.append(loss.item())
@@ -117,10 +133,30 @@ def main(args):
             optimizer.step()
 
             bar.update(j)
-    
+
         bar.finish()
 
         # TODO: validation after epoch
+        optimizer.zero_grad()
+
+        hidden_state, cell_state = lstm.init_lstm_state(len(validation_inputs))
+        hidden_state = hidden_state.to(device)
+        cell_state = cell_state.to(device)
+
+        val_loss = 0
+        for i in range(sequence_size):
+            lstm_input = validation_input_tensor[:, i, :]
+            lstm_input = lstm_input[None, :, :]
+            lstm_input = lstm_input.to(device)
+
+            lstm_state = (hidden_state, cell_state)
+            predicted, lstm_state = lstm.forward(
+                lstm_input, lstm_state
+            )
+
+            target_2D = validation_targets_tensor[:, i].to(device)
+            val_loss += loss_fun(predicted, target_2D)
+        epoch_val_losses.append(val_loss)
 
         print("Epoch finished!")
         epoch_train_losses.append(sum(epoch_train_loss)/len(epoch_train_loss))
@@ -140,6 +176,8 @@ def plot_training(epoch_train_losses, epoch_val_losses):
     plt.plot(x_evl, epoch_val_losses, "-b", label="Validation Loss")
     plt.legend(loc="upper right")
     plt.show()
+    plt.savefig("matplotlib.png")
+
 
 def loss_fun(pred, target):
     # binary cross entropy for binary classification [upper-/ lowercase]
@@ -153,7 +191,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_layers", type=int, default=3)
     parser.add_argument("--epochs", type=int, default=15)
     parser.add_argument("--batch_size", type=int, default=32)
-    parser.add_argument("--lr", type=float, default=0.01)
+    parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--val_split", type=float, default=0.1)
     args = parser.parse_args()
     main(args)

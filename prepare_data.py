@@ -9,7 +9,7 @@ def main(args):
     sequences: List[str] = [""]
 
     # TODO Change sample to some argument
-    with open(args.input_path / "sample.txt", "r", encoding="utf-8") as infile:
+    with open(args.input_path, "r", encoding="utf-8") as infile:
         infile.readline()  # Skip header
         text = infile.read()
 
