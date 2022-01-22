@@ -56,8 +56,8 @@ def main(args):
         batch_inputs = training_inputs[i:i+args.batch_size]
         batch_targets = training_targets[i:i+args.batch_size]
 
-        training_input_tensor = []      # [seq_size, batch_size, one_hot_size]
-        training_targets_tensor = []    # [seq_size, batch_size, one_hot_size]
+        training_input_tensor = []      # [batch_size, seq_size, one_hot_size]
+        training_targets_tensor = []    # [batch_size, seq_size, one_hot_size]
         for (sequence_in, sequence_out) in zip(batch_inputs, batch_targets):
             training_input_tensor.append(one_hot(sequence_in))
             training_targets_tensor.append(one_hot(sequence_out))
@@ -68,8 +68,8 @@ def main(args):
         batches_target_tensors.append(training_targets_tensor)
 
     # prepare validation inputs and targets as tensors
-    validation_input_tensor = []    # [seq_size, len(validation_inputs), one_hot_size]
-    validation_targets_tensor = []  # [seq_size, len(validation_inputs), one_hot_size]
+    validation_input_tensor = []    # [len(validation_inputs), seq_size, one_hot_size]
+    validation_targets_tensor = []  # [len(validation_inputs), seq_size, one_hot_size]
     for (sequence_in, sequence_out) in zip(validation_inputs, validation_targets):
         validation_input_tensor.append(one_hot(sequence_in))
         validation_targets_tensor.append(one_hot(sequence_out))
@@ -81,12 +81,18 @@ def main(args):
     epoch_train_losses = []
     epoch_val_losses = []
 
+    epoch_train_accuracy = []
+    epoch_val_accuracy = []
+
     # Training
     for i in range(args.epochs):
         num_epoch = i + 1
         # print("Epoch " + str(i + 1) + " starting:")
-
+        
+        # metric variables
         epoch_train_loss = []
+        hits = 0
+        attempts = 0
 
         # go through all batches
         for j, (batch, target) in enumerate(zip(batches_input_tensors, batches_target_tensors)):
@@ -118,11 +124,19 @@ def main(args):
                 # optimizer.step()
                 loss += loss_fun(predicted, target_2D)
 
+                # compute accuracy
+                for i in range(len(target_2D)):
+                    predicted_char = torch.argmax(target_2D[i]).item()
+                    target_char = torch.argmax(lstm_input[0][i]).item()
+                    hits += 1 if predicted_char == target_char else 0
+                    attempts += 1
+
             epoch_train_loss.append(loss.item())
 
             loss.backward()
             optimizer.step()
 
+            # Progress Bar and Time remaining
             time_batch = time.time() - time_batch_start
             time_remaining = round((len(batches_input_tensors) - j - 1) * time_batch, 1)
             time_pred_string = f"Time remaining: {time_remaining}"
@@ -133,8 +147,14 @@ def main(args):
                 suffix=", " + time_pred_string + "s",
                 fill_char="#"
             )
+        # Training Metrics
+        epoch_train_losses.append(sum(epoch_train_loss)/len(epoch_train_loss))
+        epoch_train_accuracy.append(hits / attempts)
 
         # Validation
+        hits = 0
+        attempts = 0
+
         hidden_state, cell_state = lstm.init_lstm_state(len(validation_inputs))
         hidden_state = hidden_state.to(device)
         cell_state = cell_state.to(device)
@@ -152,29 +172,40 @@ def main(args):
 
             target_2D = validation_targets_tensor[:, i].to(device)
             val_loss += loss_fun(predicted, target_2D)
-        epoch_val_losses.append(val_loss.item())
 
-        epoch_train_losses.append(sum(epoch_train_loss)/len(epoch_train_loss))
+            # compute accuracy
+            # TODO: Speedup or make optional
+            for i in range(len(target_2D)):
+                predicted_char = torch.argmax(target_2D[i]).item()
+                target_char = torch.argmax(lstm_input[0][i]).item()
+                hits += 1 if predicted_char == target_char else 0
+                attempts += 1
+
+        # Validation Metrics
+        epoch_val_losses.append(val_loss.item())
+        epoch_val_accuracy.append(hits / attempts)
 
     # Save network
     path = f"models/lstm_e={args.epochs}_bs={args.batch_size}_t={start_time}"
     os.mkdir(path)
     torch.save(lstm.state_dict(), f"{path}/model")
     # Plot
-    plot_training(epoch_train_losses, epoch_val_losses, path)
+    plot_training(epoch_train_losses, epoch_val_losses, path, "Losses")
+    plot_training(epoch_train_accuracy, epoch_val_accuracy, path, "Accuracy")
 
 
-def plot_training(epoch_train_losses, epoch_val_losses, path):
-    plt.title("Losses")
+def plot_training(epoch_train_losses, epoch_val_losses, path, title):
+    plt.clf()
+    plt.title(title)
     plt.grid(True)
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
     x_etl = np.arange(1, len(epoch_train_losses) + 1)
-    plt.plot(x_etl, epoch_train_losses, "-r", label="Training Loss")
+    plt.plot(x_etl, epoch_train_losses, "-r", label="Training")
     x_evl = np.arange(1, len(epoch_val_losses) + 1)
-    plt.plot(x_evl, epoch_val_losses, "-b", label="Validation Loss")
+    plt.plot(x_evl, epoch_val_losses, "-b", label="Validation")
     plt.legend(loc="upper right")
-    plt.savefig(f"{path}/losses.png")
+    plt.savefig(f"{path}/{title}.png")
     # plt.show()
 
 
