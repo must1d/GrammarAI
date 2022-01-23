@@ -52,26 +52,30 @@ def main(args):
     with open(csv_path, "a", newline='', encoding='utf-8') as csvfile:
         writer = csv.writer(csvfile)
         # Prepare actual input for network
-        # Problem: lower/upper string may be longer than original character
         for sequence in sequences:
-            prepared_sequence = ""
-            # Lower all characters
-            for char in sequence:
-                lowered = char.lower()
-                # uppered = char.upper()
-                if len(char) < len(lowered):
-                    prepared_sequence += char
-                else:
-                    prepared_sequence += lowered
-            # Random capitalization for all characters
-            # for char in sequence:
-            #     lowered = char.lower()
-            #     uppered = char.upper()
-            #     if len(char) < len(lowered) or len(char) < len(uppered):
-            #         prepared_sequence += char
-            #     else:
-            #         prepared_sequence += random.choice((lowered, uppered))
-            # writer.writerow([prepared_sequence, sequence])
+            writer.writerow([prepare_sequence(sequence), sequence])
+
+
+def prepare_sequence(sequence: str) -> str:
+    # Problem: lower/upper string may be longer than original character
+    prep_seq = ""
+    # Lower all characters
+    for char in sequence:
+        lowered = char.lower()
+        # uppered = char.upper()
+        if len(char) < len(lowered):
+            prep_seq += char
+        else:
+            prep_seq += lowered
+    # Random capitalization for all characters
+    # for char in sequence:
+    #     lowered = char.lower()
+    #     uppered = char.upper()
+    #     if len(char) < len(lowered) or len(char) < len(uppered):
+    #         prep_seq += char
+    #     else:
+    #         prep_seq += random.choice((lowered, uppered))
+    return prep_seq
 
 
 if __name__ == "__main__":
