@@ -97,6 +97,7 @@ def main(args):
 
             optimizer.zero_grad()
 
+            # initializes hidden state
             hidden_state, cell_state = lstm.init_lstm_state(len(batch))
             hidden_state = hidden_state.to(device)
             cell_state = cell_state.to(device)
@@ -115,10 +116,7 @@ def main(args):
                 )
 
                 target_2D = target[:, i].to(device)
-                # TODO: Check if better
-                # loss2 = loss_fun(predicted, target_2D)
-                # loss2.backward()
-                # optimizer.step()
+                # TODO: Check if updating weights after each character is better
                 loss += loss_fun(predicted, target_2D)
 
                 if args.accuracy:
