@@ -55,25 +55,15 @@ def main(args):
         batch_inputs = training_inputs[i:i+args.batch_size]
         batch_targets = training_targets[i:i+args.batch_size]
 
-        training_input_tensor = []      # [batch_size, seq_size, one_hot_size]
-        training_targets_tensor = []    # [batch_size, seq_size, one_hot_size]
-        for (sequence_in, sequence_out) in zip(batch_inputs, batch_targets):
-            training_input_tensor.append(one_hot(sequence_in))
-            training_targets_tensor.append(one_hot(sequence_out))
-        training_input_tensor = torch.as_tensor(training_input_tensor, dtype=torch.float32)
-        training_targets_tensor = torch.as_tensor(training_targets_tensor, dtype=torch.float32)
+        # Tensor sizes: [batch_size, seq_size, one_hot_size]
+        training_input_tensor, training_targets_tensor = batch_to_tensor(batch_inputs, batch_targets)
 
         batches_input_tensors.append(training_input_tensor)
         batches_target_tensors.append(training_targets_tensor)
 
     # prepare validation inputs and targets as tensors
-    validation_input_tensor = []    # [len(validation_inputs), seq_size, one_hot_size]
-    validation_targets_tensor = []  # [len(validation_inputs), seq_size, one_hot_size]
-    for (sequence_in, sequence_out) in zip(validation_inputs, validation_targets):
-        validation_input_tensor.append(one_hot(sequence_in))
-        validation_targets_tensor.append(one_hot(sequence_out))
-    validation_input_tensor = torch.as_tensor(validation_input_tensor, dtype=torch.float32)
-    validation_targets_tensor = torch.as_tensor(validation_targets_tensor, dtype=torch.float32)
+    # Tensor sizes [len(validation_inputs), seq_size, one_hot_size]
+    validation_input_tensor, validation_targets_tensor = batch_to_tensor(validation_inputs, validation_targets)
 
     # metrics for plots to track performance in training
     epoch_train_losses = []
@@ -95,29 +85,36 @@ def main(args):
         for j, (batch, target) in enumerate(zip(batches_input_tensors, batches_target_tensors)):
             time_batch_start = time.time()
 
-            optimizer.zero_grad()
-
             # initializes hidden state
             hidden_state, cell_state = lstm.init_lstm_state(len(batch))
             hidden_state = hidden_state.to(device)
             cell_state = cell_state.to(device)
 
-            loss = 0
+            loss_sum = 0
 
             # for every character in sequence (each sequence in parallel)
             for i in range(sequence_size):
                 lstm_input = batch[:, i, :]
-                lstm_input = lstm_input[None, :, :]
+                lstm_input = lstm_input[:, None, :]
                 lstm_input = lstm_input.to(device)
 
                 lstm_state = (hidden_state, cell_state)
-                predicted, lstm_state = lstm.forward(
+
+                optimizer.zero_grad()
+
+                predicted, lstm_state = lstm(
                     lstm_input, lstm_state
                 )
 
                 target_2D = target[:, i].to(device)
-                # TODO: Check if updating weights after each character is better
-                loss += loss_fun(predicted, target_2D)
+
+                loss = loss_fun(predicted, target_2D)
+
+                # TODO: Check if updating weights after each character or batch is better
+                loss.backward()
+                optimizer.step()
+
+                loss_sum += loss.item()
 
                 if args.accuracy:
                     # TODO: very slow; speedup
@@ -128,10 +125,7 @@ def main(args):
                         hits += 1 if predicted_char == target_char else 0
                         attempts += 1
 
-            epoch_train_loss.append(loss.item())
-
-            loss.backward()
-            optimizer.step()
+            epoch_train_loss.append(loss_sum)
 
             # Progress Bar and Time remaining
             time_batch = time.time() - time_batch_start
@@ -161,7 +155,7 @@ def main(args):
         val_loss = 0
         for i in range(sequence_size):
             lstm_input = validation_input_tensor[:, i, :]
-            lstm_input = lstm_input[None, :, :]
+            lstm_input = lstm_input[:, None, :]
             lstm_input = lstm_input.to(device)
 
             lstm_state = (hidden_state, cell_state)
@@ -185,6 +179,9 @@ def main(args):
         if args.accuracy:
             epoch_val_accuracy.append(hits / attempts)
 
+    print(epoch_train_losses)
+    print(epoch_val_losses)
+
     # Save network
     path = f"models/lstm_e={args.epochs}_bs={args.batch_size}_t={start_time}"
     os.mkdir(path)
@@ -193,6 +190,30 @@ def main(args):
     plot_metric("Loss", epoch_train_losses, epoch_val_losses, path)
     if args.accuracy:
         plot_metric("Accuracy", epoch_train_accuracy, epoch_val_accuracy, path)
+
+
+def batch_to_tensor(inputs, targets):
+    inputs_tensor = []
+    targets_tensor = []
+
+    for (sequence_in, sequence_out) in zip(inputs, targets):
+        inputs_tensor.append(one_hot(sequence_in))
+        targets_tensor.append(one_hot(sequence_out))
+    inputs_tensor = torch.as_tensor(inputs_tensor, dtype=torch.float32)
+    targets_tensor = torch.as_tensor(targets_tensor, dtype=torch.float32)
+
+    return inputs_tensor, targets_tensor
+
+
+def print_tensor_batch(tensor):
+    # [batch_size, seq_size, one_hot_size]
+    print(f"Batch: {tensor.size()}")
+    for i, sequence in enumerate(tensor):
+        sequence_str = ""
+        for char in sequence:
+            index = torch.argmax(char).item()
+            sequence_str += alphabet[index]
+        print(f"Sequence {i}: {sequence_str}")
 
 
 def plot_metric(metric_name, epoch_train_metric, epoch_val_metric, path):
