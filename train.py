@@ -125,7 +125,7 @@ def main(args):
                         hits += 1 if predicted_char == target_char else 0
                         attempts += 1
 
-            epoch_train_loss.append(loss_sum)
+            epoch_train_loss.append(loss_sum / sequence_size)
 
             # Progress Bar and Time remaining
             time_batch = time.time() - time_batch_start
@@ -152,7 +152,7 @@ def main(args):
         hidden_state = hidden_state.to(device)
         cell_state = cell_state.to(device)
 
-        val_loss = 0
+        val_loss_sum = 0
         for i in range(sequence_size):
             lstm_input = validation_input_tensor[:, i, :]
             lstm_input = lstm_input[:, None, :]
@@ -164,7 +164,7 @@ def main(args):
             )
 
             target_2D = validation_targets_tensor[:, i].to(device)
-            val_loss += loss_fun(predicted, target_2D)
+            val_loss_sum += loss_fun(predicted, target_2D).item()
 
             if args.accuracy:
                 # compute accuracy
@@ -175,7 +175,7 @@ def main(args):
                     attempts += 1
 
         # Validation Metrics
-        epoch_val_losses.append(val_loss.item())
+        epoch_val_losses.append(val_loss_sum / sequence_size)
         if args.accuracy:
             epoch_val_accuracy.append(hits / attempts)
 
