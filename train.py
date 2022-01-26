@@ -32,38 +32,31 @@ def main(args):
     # Adam optimizer with specified learning rate
     optimizer = torch.optim.Adam(lstm.parameters(), lr=args.lr)
 
-    # TODO: Improve this
     # Load input and targets
     training_inputs, training_targets = read_training_data(args.dataset)
+    sequence_size = len(training_inputs[0])
+
+    # shuffle inputs and targets
+    temp_list = list(zip(training_inputs, training_targets))
+    random.shuffle(temp_list)
+    training_inputs, training_targets = zip(*temp_list)
 
     # split into training and validation sets
-    val_size = int(args.val_split*len(training_inputs))
-    validation_inputs = []
-    validation_targets = []
-    # TODO Replace this with random.shuffle() and pick elements
-    for i in range(val_size):
-        index = random.randint(0, len(training_inputs) - 1)
-        validation_inputs.append(training_inputs.pop(index))
-        validation_targets.append(training_targets.pop(index))
+    val_size = int(args.val_split * len(training_inputs))
+    validation_inputs = training_inputs[0:val_size - 1]
+    validation_targets = training_targets[0:val_size - 1]
+    training_inputs = training_inputs[val_size:-1]
+    training_targets = training_targets[val_size:-1]
 
-    # prepare batches as list of tensors
-    batches_input_tensors: List[torch.Tensor] = []
-    batches_target_tensors: List[torch.Tensor] = []
-
-    sequence_size = len(training_inputs[0])
-    for i in range(0, len(training_inputs), args.batch_size):
-        batch_inputs = training_inputs[i:i+args.batch_size]
-        batch_targets = training_targets[i:i+args.batch_size]
-
-        # Tensor sizes: [batch_size, seq_size, one_hot_size]
-        training_input_tensor, training_targets_tensor = batch_to_tensor(batch_inputs, batch_targets)
-
-        batches_input_tensors.append(training_input_tensor)
-        batches_target_tensors.append(training_targets_tensor)
-
-    # prepare validation inputs and targets as tensors
-    # Tensor sizes [len(validation_inputs), seq_size, one_hot_size]
-    validation_input_tensor, validation_targets_tensor = batch_to_tensor(validation_inputs, validation_targets)
+    # prepare batches
+    training_input_tensors, training_target_tensors = prepare_batches(
+        training_inputs,
+        training_targets,
+        args.batch_size)
+    validation_input_tensors, validation_target_tensors = prepare_batches(
+        validation_inputs,
+        validation_targets,
+        args.batch_size)
 
     # metrics for plots to track performance in training
     epoch_train_losses = []
@@ -82,58 +75,39 @@ def main(args):
             attempts = 0
 
         # go through all batches
-        for j, (batch, target) in enumerate(zip(batches_input_tensors, batches_target_tensors)):
+        for j, (batch, target) in enumerate(zip(training_input_tensors, training_target_tensors)):
             time_batch_start = time.time()
 
             # initializes hidden state
             hidden_state, cell_state = lstm.init_lstm_state(len(batch))
             hidden_state = hidden_state.to(device)
             cell_state = cell_state.to(device)
+            lstm_state = (hidden_state, cell_state)
 
-            loss_sum = 0
+            optimizer.zero_grad()
 
-            # for every character in sequence (each sequence in parallel)
-            for i in range(sequence_size):
-                lstm_input = batch[:, i, :]
-                lstm_input = lstm_input[:, None, :]
-                lstm_input = lstm_input.to(device)
+            batch = batch.to(device)
+            target_reshaped = target.reshape(len(batch) * sequence_size, len(alphabet)).to(device)
 
-                lstm_state = (hidden_state, cell_state)
+            predicted, __ = lstm(batch, lstm_state)
 
-                optimizer.zero_grad()
+            loss = loss_fun(predicted, target_reshaped)
 
-                predicted, lstm_state = lstm(
-                    lstm_input, lstm_state
-                )
+            loss.backward()
+            optimizer.step()
 
-                target_2D = target[:, i].to(device)
+            # TODO: accuracy
 
-                loss = loss_fun(predicted, target_2D)
-
-                # TODO: Check if updating weights after each character or batch is better
-                loss.backward()
-                optimizer.step()
-
-                loss_sum += loss.item()
-
-                if args.accuracy:
-                    # TODO: very slow; speedup
-                    # compute accuracy
-                    for i in range(len(target_2D)):
-                        predicted_char = torch.argmax(target_2D[i]).item()
-                        target_char = torch.argmax(lstm_input[0][i]).item()
-                        hits += 1 if predicted_char == target_char else 0
-                        attempts += 1
-
-            epoch_train_loss.append(loss_sum / sequence_size)
+            epoch_train_loss.append(loss.item())
 
             # Progress Bar and Time remaining
             time_batch = time.time() - time_batch_start
-            time_remaining = round((len(batches_input_tensors) - j - 1) * time_batch, 1)
+            time_remaining = round((len(training_input_tensors) - j - 1) * time_batch, 1)
             time_pred_string = f"Time remaining: {time_remaining}"
+            print(len(training_input_tensors))
             print_progress_bar(
-                j,
-                len(batches_input_tensors) - 1,
+                j+1,
+                len(training_input_tensors),
                 f"Epoch {num_epoch + 1}",
                 suffix=", " + time_pred_string + "s",
                 fill_char="#"
@@ -145,37 +119,27 @@ def main(args):
             epoch_train_accuracy.append(hits / attempts)
 
         # Validation
-        hits = 0
-        attempts = 0
-
-        hidden_state, cell_state = lstm.init_lstm_state(len(validation_inputs))
-        hidden_state = hidden_state.to(device)
-        cell_state = cell_state.to(device)
-
-        val_loss_sum = 0
-        for i in range(sequence_size):
-            lstm_input = validation_input_tensor[:, i, :]
-            lstm_input = lstm_input[:, None, :]
-            lstm_input = lstm_input.to(device)
-
+        epoch_validation_loss = []
+        for j, (batch, target) in enumerate(zip(validation_input_tensors, validation_target_tensors)):
+            # initializes hidden state
+            hidden_state, cell_state = lstm.init_lstm_state(len(batch))
+            hidden_state = hidden_state.to(device)
+            cell_state = cell_state.to(device)
             lstm_state = (hidden_state, cell_state)
-            predicted, lstm_state = lstm.forward(
-                lstm_input, lstm_state
-            )
 
-            target_2D = validation_targets_tensor[:, i].to(device)
-            val_loss_sum += loss_fun(predicted, target_2D).item()
+            optimizer.zero_grad()
 
-            if args.accuracy:
-                # compute accuracy
-                for i in range(len(target_2D)):
-                    predicted_char = torch.argmax(target_2D[i]).item()
-                    target_char = torch.argmax(lstm_input[0][i]).item()
-                    hits += 1 if predicted_char == target_char else 0
-                    attempts += 1
+            batch = batch.to(device)
+            target_reshaped = target.reshape(len(batch) * sequence_size, len(alphabet)).to(device)
+
+            predicted, __ = lstm(batch, lstm_state)
+
+            loss = loss_fun(predicted, target_reshaped)
+
+            epoch_validation_loss.append(loss.item())
 
         # Validation Metrics
-        epoch_val_losses.append(val_loss_sum / sequence_size)
+        epoch_val_losses.append(sum(epoch_validation_loss)/len(epoch_validation_loss))
         if args.accuracy:
             epoch_val_accuracy.append(hits / attempts)
 
@@ -234,11 +198,28 @@ def loss_fun(pred, target):
     return F.cross_entropy(pred, target)
 
 
+def prepare_batches(inputs, targets, batch_size):
+    input_tensors: List[torch.Tensor] = []
+    target_tensors: List[torch.Tensor] = []
+
+    for i in range(0, len(inputs), batch_size):
+        batch_inputs = inputs[i:i+batch_size]
+        batch_targets = targets[i:i+batch_size]
+
+        # Tensor sizes: [batch_size, seq_size, one_hot_size]
+        training_input_tensor, training_targets_tensor = batch_to_tensor(batch_inputs, batch_targets)
+
+        input_tensors.append(training_input_tensor)
+        target_tensors.append(training_targets_tensor)
+
+    return input_tensors, target_tensors
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("dataset", type=Path)
-    parser.add_argument("--hidden_size", type=int, default=300)
-    parser.add_argument("--num_layers", type=int, default=2)
+    parser.add_argument("--hidden_size", type=int, default=700)
+    parser.add_argument("--num_layers", type=int, default=3)
     parser.add_argument("--epochs", type=int, default=15)
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--lr", type=float, default=0.001)

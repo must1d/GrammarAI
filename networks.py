@@ -23,7 +23,7 @@ class LSTM(nn.Module):
         output, lstm_state = self.lstm(input, lstm_state)
 
         # output [batch_size, 1, one_hot_size]
-        output = output.view(output.size()[0]*output.size()[1], self.hidden_size)
+        output = output.reshape(output.size()[0]*output.size()[1], self.hidden_size)
 
         output = self.output_layer(output)
 
