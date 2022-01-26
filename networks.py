@@ -13,7 +13,7 @@ class LSTM(nn.Module):
         # NN outputs a character (in one hot encoding)
         self.output_layer = nn.Linear(hidden_size, input_size)
         # Softmax layer
-        self.softmax = nn.Softmax(dim=1)
+        #self.softmax = nn.Softmax(dim=1)
 
     def forward(self, input, lstm_state):
         # input [batch_size, 1, one_hot_size]
@@ -30,7 +30,7 @@ class LSTM(nn.Module):
         # use softmax function to output probabilities
         # output [batchsize, one_hot_size]
 
-        output = self.softmax(output)
+        #output = self.softmax(output)
         return output, lstm_state
 
     def init_lstm_state(self, num_inputs):

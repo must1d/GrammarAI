@@ -104,11 +104,10 @@ def main(args):
             time_batch = time.time() - time_batch_start
             time_remaining = round((len(training_input_tensors) - j - 1) * time_batch, 1)
             time_pred_string = f"Time remaining: {time_remaining}"
-            print(len(training_input_tensors))
             print_progress_bar(
-                j+1,
-                len(training_input_tensors),
-                f"Epoch {num_epoch + 1}",
+                j,
+                len(training_input_tensors)-1,
+                f"Epoch {num_epoch+1}",
                 suffix=", " + time_pred_string + "s",
                 fill_char="#"
             )
