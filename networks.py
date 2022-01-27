@@ -12,25 +12,20 @@ class LSTM(nn.Module):
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
         # NN outputs a character (in one hot encoding)
         self.output_layer = nn.Linear(hidden_size, input_size)
-        # Softmax layer
-        #self.softmax = nn.Softmax(dim=1)
 
     def forward(self, input, lstm_state):
-        # input [batch_size, 1, one_hot_size]
+        # input [batch_size, sequence_length, one_hot_size]
 
-        # Forward propagate LSTM [lstm_state = (hidden, cell)]
-        # output [batch_size, 1, hidden_size]
+        # output [batch_size, sequence_length, hidden_size]
         output, lstm_state = self.lstm(input, lstm_state)
 
-        # output [batch_size, 1, one_hot_size]
+        # output [batch_size * sequence_length, one_hot_size]
         output = output.reshape(output.size()[0]*output.size()[1], self.hidden_size)
 
+        # output [batch_size * sequence_length, one_hot_size]
+        # output contains every single character of batch with corresponding one hot vector
         output = self.output_layer(output)
 
-        # use softmax function to output probabilities
-        # output [batchsize, one_hot_size]
-
-        #output = self.softmax(output)
         return output, lstm_state
 
     def init_lstm_state(self, num_inputs):

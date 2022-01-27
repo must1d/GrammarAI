@@ -19,11 +19,8 @@ def main(args):
 
     # first check if cuda is available, otherwise use CPU
     use_cuda = torch.cuda.is_available()
-    if use_cuda:
-        print("Using cuda!")
-    else:
-        print("Using CPU!")
     device = torch.device("cuda" if use_cuda else "cpu")
+    print(f"Using device: {device}!")
 
     # create new model and push it to device
     lstm = LSTM(len(alphabet), args.hidden_size, args.num_layers)
@@ -229,6 +226,5 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--val_split", type=float, default=0.1)
-    parser.add_argument("--accuracy", action="store_true")
     args = parser.parse_args()
     main(args)
