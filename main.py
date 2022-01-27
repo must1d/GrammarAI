@@ -10,12 +10,11 @@ def main(args):
     device = torch.device("cuda" if use_cuda else "cpu")
 
     # load the model
-    # TODO: Read hidden size and number of layers from file
-    lstm = LSTM(len(alphabet), 700, 3)
-    lstm.load_state_dict(torch.load(args.model / "model"))
+    checkpoint = torch.load(args.model/"model")
+    lstm = LSTM(len(alphabet), checkpoint['hidden_size'], checkpoint['num_layers'])
+    lstm.load_state_dict(checkpoint['state_dict'])
     lstm.eval()
     lstm = lstm.to(device)
-    # model = torch.load(args.model / "model")
 
     # prepare the sentence as tensor in onehot encoding
     # [1, sentence_length, one_hot_size]

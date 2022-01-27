@@ -140,7 +140,11 @@ def main(args):
     # Save network
     path = f"models/lstm_e={args.epochs}_bs={args.batch_size}_t={start_time}"
     os.mkdir(path)
-    torch.save(lstm.state_dict(), f"{path}/model")
+    checkpoint = {'num_layers': lstm.num_layers,
+                  'hidden_size': lstm.hidden_size,
+                  'state_dict': lstm.state_dict()}
+    torch.save(checkpoint, f"{path}/model")
+
     # Plot
     plot_metric("Loss", epoch_train_losses, epoch_val_losses, path)
     plot_metric("Accuracy", epoch_train_accuracies, epoch_val_accuracies, path)
