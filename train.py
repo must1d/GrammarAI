@@ -61,18 +61,16 @@ def main(args):
     # metrics for plots to track performance in training
     epoch_train_losses = []
     epoch_val_losses = []
-    if args.accuracy:
-        print("Warning: Accuracy is enabled! This significantly slows down learning!")
-        epoch_train_accuracy = []
-        epoch_val_accuracy = []
+    epoch_train_accuracies = []
+    epoch_val_accuracies = []
 
     # Training
     for num_epoch in range(args.epochs):
         # metric variables
-        epoch_train_loss = []
-        if args.accuracy:
-            hits = 0
-            attempts = 0
+        epoch_train_loss = []   # loss of each batch -> will be averaged
+        epoch_val_loss = []     # loss of each batch -> will be averaged
+        epoch_train_accuracy = []   # accuracy of each batch -> will be averaged
+        epoch_val_accuracy = []     # accuracy of each batch -> will be averaged
 
         # go through all batches
         for j, (batch, target) in enumerate(zip(training_input_tensors, training_target_tensors)):
@@ -96,9 +94,10 @@ def main(args):
             loss.backward()
             optimizer.step()
 
-            # TODO: accuracy
-
+            # metrics for batch
             epoch_train_loss.append(loss.item())
+            acc = get_accuracy(predicted, target_reshaped)
+            epoch_train_accuracy.append(acc)
 
             # Progress Bar and Time remaining
             time_batch = time.time() - time_batch_start
@@ -112,13 +111,7 @@ def main(args):
                 fill_char="#"
             )
 
-        # Training Metrics
-        epoch_train_losses.append(sum(epoch_train_loss)/len(epoch_train_loss))
-        if args.accuracy:
-            epoch_train_accuracy.append(hits / attempts)
-
         # Validation
-        epoch_validation_loss = []
         for j, (batch, target) in enumerate(zip(validation_input_tensors, validation_target_tensors)):
             # initializes hidden state
             hidden_state, cell_state = lstm.init_lstm_state(len(batch))
@@ -135,15 +128,17 @@ def main(args):
 
             loss = loss_fun(predicted, target_reshaped)
 
-            epoch_validation_loss.append(loss.item())
+            # metrics for batch
+            epoch_val_loss.append(loss.item())
+            acc = get_accuracy(predicted, target_reshaped)
+            epoch_val_accuracy.append(acc)
 
+        # Training Metrics
+        epoch_train_losses.append(sum(epoch_train_loss)/len(epoch_train_loss))
+        epoch_train_accuracies.append(sum(epoch_train_accuracy)/len(epoch_train_accuracy))
         # Validation Metrics
-        epoch_val_losses.append(sum(epoch_validation_loss)/len(epoch_validation_loss))
-        if args.accuracy:
-            epoch_val_accuracy.append(hits / attempts)
-
-    print(epoch_train_losses)
-    print(epoch_val_losses)
+        epoch_val_losses.append(sum(epoch_val_loss)/len(epoch_val_loss))
+        epoch_val_accuracies.append(sum(epoch_val_accuracy)/len(epoch_val_accuracy))
 
     # Save network
     path = f"models/lstm_e={args.epochs}_bs={args.batch_size}_t={start_time}"
@@ -151,8 +146,7 @@ def main(args):
     torch.save(lstm.state_dict(), f"{path}/model")
     # Plot
     plot_metric("Loss", epoch_train_losses, epoch_val_losses, path)
-    if args.accuracy:
-        plot_metric("Accuracy", epoch_train_accuracy, epoch_val_accuracy, path)
+    plot_metric("Accuracy", epoch_train_accuracies, epoch_val_accuracies, path)
 
 
 def batch_to_tensor(inputs, targets):
@@ -195,6 +189,18 @@ def plot_metric(metric_name, epoch_train_metric, epoch_val_metric, path):
 
 def loss_fun(pred, target):
     return F.cross_entropy(pred, target)
+
+
+def get_accuracy(outputs, targets):
+    hits = 0
+
+    outputs_indices = torch.argmax(outputs, dim=1).tolist()
+    targets_indices = torch.argmax(targets, dim=1).tolist()
+
+    for (index_out, index_target) in zip(outputs_indices, targets_indices):
+        hits = hits + 1 if index_out == index_target else hits
+
+    return hits / len(outputs)
 
 
 def prepare_batches(inputs, targets, batch_size):
