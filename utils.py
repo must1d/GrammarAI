@@ -1,7 +1,7 @@
 from pathlib import Path
-from typing import List
 import string
 import pandas
+import numpy as np
 
 alphabet = string.printable + "ÄÖÜäöü"
 
@@ -13,18 +13,14 @@ def read_training_data(path: Path):
     return inputs, targets
 
 
-def one_hot(sequence: str) -> List[List[int]]:
+def one_hot(sequence: str):
     # character index 98 will be used for characters that are not part of alphabet
-    sequence_one_hot = []
-    if type(sequence) is float:
-        print(sequence)
-    for char in sequence:
-        arr = [0] * len(alphabet)
+    sequence_one_hot = np.zeros((len(sequence), len(alphabet)))
+    for i, char in enumerate(sequence):
         if char not in alphabet:
-            arr[98] = 1
+            sequence_one_hot[i][98] = 1
         else:
-            arr[alphabet.index(char)] = 1
-        sequence_one_hot.append(arr)
+            sequence_one_hot[i][alphabet.index(char)] = 1
     return sequence_one_hot
 
 

@@ -1,6 +1,7 @@
 import argparse
 from pathlib import Path
 import torch
+import numpy as np
 from networks import LSTM
 from utils import one_hot, alphabet
 
@@ -19,7 +20,8 @@ def main(args):
     # prepare the sentence as tensor in onehot encoding
     # [1, sentence_length, one_hot_size]
     sentence = args.sentence
-    sentence_tensor = [one_hot(sentence)]
+    sentence_tensor = np.zeros((1, len(sentence), len(alphabet)))
+    sentence_tensor[0][:][:] = one_hot(sentence)[:][:]
     sentence_tensor = torch.as_tensor(sentence_tensor, dtype=torch.float32)
 
     output_sentence = ""

@@ -38,7 +38,7 @@ def main(args):
                     sequences[-1] += char   # Append character to latest sequence
                     sequence_counter += 1
             # Remove last sequence if it's not long enough
-            if len(sequences) > 0 and len(sequences[-1]) < 50:
+            if len(sequences) > 0 and len(sequences[-1]) < args.sequence_length:
                 sequences.pop(-1)
 
     # Create csv output file if it does not exist
@@ -60,21 +60,21 @@ def prepare_sequence(sequence: str) -> str:
     # Problem: lower/upper string may be longer than original character
     prep_seq = ""
     # Lower all characters
+    #for char in sequence:
+    #    lowered = char.lower()
+    #    # uppered = char.upper()
+    #    if len(char) < len(lowered):
+    #        prep_seq += char
+    #    else:
+    #        prep_seq += lowered
+    # Random capitalization for all characters
     for char in sequence:
         lowered = char.lower()
-        # uppered = char.upper()
-        if len(char) < len(lowered):
+        uppered = char.upper()
+        if len(char) < len(lowered) or len(char) < len(uppered):
             prep_seq += char
         else:
-            prep_seq += lowered
-    # Random capitalization for all characters
-    # for char in sequence:
-    #     lowered = char.lower()
-    #     uppered = char.upper()
-    #     if len(char) < len(lowered) or len(char) < len(uppered):
-    #         prep_seq += char
-    #     else:
-    #         prep_seq += random.choice((lowered, uppered))
+            prep_seq += random.choice((lowered, uppered))
     return prep_seq
 
 
@@ -82,7 +82,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("output_path", type=Path)
     parser.add_argument("input_path", type=Path)
-    parser.add_argument("--sequence_length", type=int, default=50)
+    parser.add_argument("--sequence_length", type=int, default=100)
     args = parser.parse_args()
     if args.sequence_length <= 0:
         raise argparse.ArgumentTypeError(
