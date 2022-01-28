@@ -8,8 +8,8 @@ alphabet = string.printable + "ÄÖÜäöü"
 
 def read_training_data(path: Path):
     data = pandas.read_csv(path / "dataset.csv")
-    inputs = data["input"].to_list()
-    targets = data["target"].to_list()
+    inputs = np.array(data["input"])
+    targets = np.array(data["target"])
     return inputs, targets
 
 

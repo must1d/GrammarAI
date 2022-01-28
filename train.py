@@ -4,7 +4,6 @@ from datetime import datetime
 import time
 import torch
 import torch.nn.functional as F
-import random
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -32,10 +31,10 @@ def main(args):
     training_inputs, training_targets = read_training_data(args.dataset)
     sequence_size = len(training_inputs[0])
 
-    # shuffle inputs and targets
-    temp_list = list(zip(training_inputs, training_targets))
-    random.shuffle(temp_list)
-    training_inputs, training_targets = zip(*temp_list)
+    # Shuffle inputs and targets together
+    perm = np.random.permutation(len(training_inputs))
+    training_inputs = training_inputs[perm]
+    training_targets = training_targets[perm]
 
     # split into training and validation sets
     val_size = int(args.val_split * len(training_inputs))
