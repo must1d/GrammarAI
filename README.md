@@ -15,6 +15,9 @@ Install all required packages:
 ```
 pip install -r requirements.txt
 ```
+Lastly, install a pytorch and cuda version that fits your system from:
+https://pytorch.org/
+
 
 # Usage
 To start GrammarAI, first source the environment.
@@ -24,6 +27,5 @@ source venv/bin/activate
 ```
 From here, run the `main.py` script with the sentence to be corrected as argument:
 ```
-python main.py --sentence "SENTENCE"
+python main.py "SENTENCE"
 ```
-
