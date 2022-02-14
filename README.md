@@ -1,4 +1,5 @@
 # GrammarAI
+GrammarAI is a recurrent neural network, in particular a LSTM network, that tries to correct capitalization errors. The provided model is trained on German sentences; however, GrammarAI can also be trained for different languages, such as English.
 
 # Installation
 In order to install GrammarAI, the repository has to be cloned to a desired directory:
