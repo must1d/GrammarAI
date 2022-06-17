@@ -53,7 +53,6 @@ def load_model(path, device):
     lstm = lstm.to(device)
     return lstm
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("sentence", type=str)
