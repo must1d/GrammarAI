@@ -11,7 +11,7 @@ def main(args):
     device = torch.device("cuda" if use_cuda else "cpu")
 
     # load the model
-    checkpoint = torch.load(args.model/"model")
+    checkpoint = torch.load(args.model/"model", map_location=torch.device(device=device))
     lstm = LSTM(len(alphabet), checkpoint['hidden_size'], checkpoint['num_layers'])
     lstm.load_state_dict(checkpoint['state_dict'])
     lstm.eval()
